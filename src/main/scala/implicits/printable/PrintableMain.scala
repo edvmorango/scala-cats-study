@@ -1,6 +1,6 @@
 package implicits.printable
 
-import implicits.calculable.{Calculable, CalculableWriter}
+final case class Person(name: String, age: Int, status: String)
 
 object PrintableInstances {
 
@@ -18,6 +18,16 @@ object PrintableInstances {
         PrintableValue(s"Int Printable form: ${value.toString}")
       override def print(value: Int): Unit = println(s"Print -> $value")
 
+    }
+  }
+
+  implicit val printablePersonFormatter: PrintableFormatter[Person] = {
+    new PrintableFormatter[Person] {
+      override def format(v: Person): Printable =
+        PrintableValue(s"${v.name} have ${v.age} years and is ${v.status}")
+
+      override def print(v: Person): Unit =
+        println(s"Print Person: ${v.toString}")
     }
   }
 
@@ -47,17 +57,19 @@ object PrintableSyntax {
 object PrintableMain extends App {
   import PrintableInstances._
 
+  val person = new Person("Eduardo", 21, "Healthy")
+
   val interfaces = {
-    val printable = PrintableInterface.format(10)
-    println(printable)
-    PrintableInterface.print(20)
+    val p = PrintableInterface.format(person)
+    println(p)
+    PrintableInterface.print(person)
   }
 
   val syntax = {
     import PrintableSyntax._
-    val printable = 50.asPrintable
-    println(printable)
-    60.print
+    val p = person.asPrintable
+    println(p)
+    person.print
   }
 
 }
