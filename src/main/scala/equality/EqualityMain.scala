@@ -1,0 +1,3 @@
+package equality
+
+class EqualityMain {}
