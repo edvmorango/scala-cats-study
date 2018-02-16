@@ -1,4 +1,4 @@
-package implicits
+package implicits.calculable
 
 object CalculableInstance {
 

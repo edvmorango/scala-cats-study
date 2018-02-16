@@ -1,4 +1,4 @@
-package implicits
+package implicits.calculable
 
 //Type class come from Haskell so this concept don't work without ADTs(Algebric)
 
