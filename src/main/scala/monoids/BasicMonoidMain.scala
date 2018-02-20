@@ -21,6 +21,15 @@ object ContainerMonoidInterface {
 
 }
 
+object ContainerMonoidSyntax {
+
+  implicit class MonoidOps[A](a: A) {
+    def append(b: A)(implicit m: Monoid[A]): A =
+      m.append(a, b)
+  }
+
+}
+
 object BasicMonoidMain extends App {
   import ContainerMonoidInstance._
 
@@ -35,6 +44,18 @@ object BasicMonoidMain extends App {
 
   println(s"Bigger Container Box Count: ${biggerContainer.boxCount}")
   println(s"Super Container Box Count: ${superContainer.boxCount}")
+
+  val withSyntax = {
+    import ContainerMonoidSyntax._
+
+    val c1 = Container(10)
+    val c2 = Container(15)
+    val c3 = Container(25)
+
+    c1.append(c2).append(c3)
+  }
+
+  println(s"Super with Syntax ${withSyntax.boxCount}")
 
   println(s"Container respect associativity law: ${MonoidProofVerifier
     .associativityLaw(container1, container2, container3)} ")
