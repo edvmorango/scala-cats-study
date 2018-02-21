@@ -15,17 +15,23 @@ object ContainerMonoidInstance {
 
 }
 
-object ContainerMonoidInterface {
+object MonoidInterface {
 
   def mappend[A](a: A, b: A)(implicit monoid: Monoid[A]) = monoid.append(a, b)
 
+  def catamorphism[A](l: List[A])(implicit monoid: Monoid[A]): A = {
+    l.foldRight(monoid.id)(monoid.append)
+  }
+
 }
 
-object ContainerMonoidSyntax {
+object MonoidSyntax {
 
   implicit class MonoidOps[A](a: A) {
     def append(b: A)(implicit m: Monoid[A]): A =
       m.append(a, b)
+    def appendList(l: List[A])(implicit m: Monoid[A]): A =
+      l.foldRight(a)(m.append)
   }
 
 }
@@ -37,16 +43,16 @@ object BasicMonoidMain extends App {
   val container2 = Container(2)
   val container3 = Container(3)
 
-  val biggerContainer = ContainerMonoidInterface.mappend(container1, container2)
+  val biggerContainer = MonoidInterface.mappend(container1, container2)
 
   val superContainer =
-    ContainerMonoidInterface.mappend(biggerContainer, container3)
+    MonoidInterface.mappend(biggerContainer, container3)
 
   println(s"Bigger Container Box Count: ${biggerContainer.boxCount}")
   println(s"Super Container Box Count: ${superContainer.boxCount}")
 
   val withSyntax = {
-    import ContainerMonoidSyntax._
+    import MonoidSyntax._
 
     val c1 = Container(10)
     val c2 = Container(15)
@@ -55,9 +61,24 @@ object BasicMonoidMain extends App {
     c1.append(c2).append(c3)
   }
 
+  val listWithSyntax = {
+
+    import MonoidSyntax._
+
+    val currentContainer = Container(50)
+    val l = List(Container(100), Container(20), Container(80))
+
+    currentContainer.appendList(l)
+  }
+
   println(s"Super with Syntax ${withSyntax.boxCount}")
 
   println(s"Container respect associativity law: ${MonoidProofVerifier
     .associativityLaw(container1, container2, container3)} ")
+
+  val list = List(container1, container2, container3)
+
+  println(s"By catamorphism: ${MonoidInterface.catamorphism(list).boxCount}")
+  println(s"By list: ${listWithSyntax.boxCount}")
 
 }
