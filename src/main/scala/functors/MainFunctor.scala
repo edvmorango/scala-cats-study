@@ -18,7 +18,7 @@ object FunctorInstance {
 
 object FunctorInterface {
 
-  def fmap[A, B, F[A]](fa: F[A])(func: (A => B))(
+  def fmap[A, B, F[_]](fa: F[A])(func: (A => B))(
       implicit functor: Functor[F]): F[B] =
     functor.map(fa)(func)
 
@@ -26,9 +26,9 @@ object FunctorInterface {
 
 object FunctorSyntax {
 
-  implicit class functorSyntax[F[A], A, B](fa: F[A])(
+  implicit class functorSyntax[F[_], A](fa: F[A])(
       implicit functor: Functor[F]) {
-    def fmap(fm: (A => B)) = functor.map(fa)(fm)
+    def fmap[B](fm: (A => B)) = functor.map(fa)(fm)
 
   }
 
