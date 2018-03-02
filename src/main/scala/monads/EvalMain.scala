@@ -49,7 +49,7 @@ object EvalMain extends App {
 
   val later = Eval.later(math.random()) // lazy + memoized
 
-  val always = Eval.always(math.random()) // lazy + not memoized?
+  val always = Eval.always(math.random()) // lazy + not memoized!
 
 
   println("Now:")
@@ -66,6 +66,54 @@ object EvalMain extends App {
   println(always)
   println(always.value)
   println(always.value)
+
+  println("\nnowString:")
+
+  val nowString = Eval.now{ println("Evaluated right now"); 10}
+    .map(x => 10.toString)
+
+  println(nowString)
+  println(nowString.value)
+
+
+
+  println("\nChaining Later + Always (always you reavaluate always) :\n")
+
+  val chaining = Eval.later{ println("Later"); 10}.flatMap{ l =>
+    Eval.always{
+      println("Always")
+      2 * l
+    }
+  }
+
+  println(chaining)
+  println(chaining.value)
+  println(chaining.value)
+  println(chaining.value)
+  println(chaining.value)
+
+
+  println("\nChaining Later + Always with Impurity:\n")
+
+  val impureChaining = Eval.later(10).flatMap{ l =>
+    Eval.always{
+      val rnd = math.random()
+      println(s"Always: $rnd")
+      rnd * l
+    }
+  }
+
+  println(impureChaining)
+  println(impureChaining.value)
+  println(impureChaining.value)
+
+  println("\nChaining Later + Always with memoize (always will be evaluated once)  \n")
+  val impureToPure = impureChaining.memoize
+  println(impureToPure)
+  println(impureToPure.value)
+  println(impureToPure.value)
+ // memoize brings purity?
+
 
 
 }
