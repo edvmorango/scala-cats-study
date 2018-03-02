@@ -30,26 +30,28 @@ object MonadInterface  {
 
 
 object MonadProofs {
-//
-//  def leftId[F[_], A, B](value: A)(func: A => F[B])(implicit m: Monad[F[A]]): Boolean = {
-//    val wrapped = m.pure(value)
-//    m.flatMap(wrapped)(func) == func(value)
-//  }
-//
-//  def rightId[F[_], A, B](value: A)(implicit m: Monad[F[A]]): Boolean = {
-//    m.pure(value) == m
-//  }
 
-//  def associativity[F[_], A, B, C](value: A)(func: A => F[B])(func2: F[B => F[C])(implicit m: Monad[F[A]]): Boolean = {
-//    val lwrapped = m.flatMap(m.pure(value))(func)
-//    val left = m.flatMap(lwrapped)(func2)
-//
-//    val rwrapped = m.pure(func(value))
-//    val right = m.flatMap(rwrapped)(func2)
-//
-//    left == right
 
-//}
+  def rightId[F[_], A](value: F[A])(implicit m: Monad[F]): Boolean =
+    m.flatMap(value)(m.pure) == value
+
+
+  def leftId[F[_], A, B](value: A)(func: A => F[B])(implicit m: Monad[F]): Boolean = {
+    val w = m.pure(value)
+
+    m.flatMap(w)(x =>func(x)) ==  func(value)
+  }
+
+  def associativity[F[_], A, B, C](value: A)(func: A => F[B])(func2: B => F[C])(implicit m: Monad[F]): Boolean = {
+
+    val ml = m.flatMap(m.pure(value))(func)
+    val left = m.flatMap(ml)(func2)
+
+    val mr = m.pure(value)
+    val right = m.flatMap(mr)( x => m.flatMap(func(x))(func2) )
+
+    left == right
+  }
 
 
 }
@@ -68,5 +70,11 @@ object MonadMain extends App{
 
   println(s"Option Monad: $result")
 
+  val right = MonadProofs.rightId(option)
+  val left = MonadProofs.leftId(10)(Option(_))
+  val assoc = MonadProofs.associativity(10)(Option(_))(x => Option(x * 2))
+
+
+  println(s"Right: $right Left: $left Assoc: $assoc")
 
 }
