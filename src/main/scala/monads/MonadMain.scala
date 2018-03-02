@@ -9,7 +9,7 @@ object MonadInstance {
 
     override def flatMap[A, B](m: Option[A])(func: (A) => Option[B]): Option[B] = m.flatMap(func)
 
-    override def map[A, B](m: Option[A])(func: (A) => B): Option[B] = m.map(func)
+    override def map[A, B](m: Option[A])(func: (A) => B): Option[B] = flatMap(m)(v => pure(func(v)) )
   }
 
 }
@@ -23,6 +23,25 @@ object MonadInterface  {
 
   def flatMap[F[_], A, B](wrappedValue: F[A])(fb: A => F[B])(implicit m: Monad[F]): F[B] = {
     m.flatMap(wrappedValue)(fb)
+  }
+
+
+}
+
+object MonadSyntax {
+
+  implicit class MonadSyntaxWrapper[A](v: A) {
+    def wrap[F[_]]()(implicit m: Monad[F]): F[A] = m.pure(v)
+  }
+
+  implicit class MonadSyntax[F[_], A](m: F[A]) {
+
+    def bind[B](f: (A => F[B]))(implicit  mi: Monad[F]): F[B] = mi.flatMap(m)(f)
+
+
+
+    def smap[B](f: (A => B))(implicit  mi: Monad[F]): F[B] = mi.map(m)(f)
+
   }
 
 
@@ -69,6 +88,18 @@ object MonadMain extends App{
   val result = MonadInterface.flatMap(option)(intToDouble)
 
   println(s"Option Monad: $result")
+
+  val resultSyntax = {
+    import MonadSyntax._
+
+    val soption: Option[Int] = 10.wrap()
+
+//    val sresult: Option[Double] = soption.smap[Double](_.toDouble)
+//    val sresult: Option[Double] = 10.wrap().bind[Double](x => Option(x.toDouble)  )
+  }
+
+
+  println(s"Option Monad Syntax: $result")
 
   val right = MonadProofs.rightId(option)
   val left = MonadProofs.leftId(10)(Option(_))
