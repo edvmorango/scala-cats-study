@@ -4,10 +4,7 @@ import cats.data.{Writer, WriterT}
 import cats.syntax.applicative._
 import cats.syntax.writer._
 import cats.instances.int._
-
-import scala.concurrent.{Await, Future}
-import scala.concurrent.ExecutionContext.Implicits.global
-import scala.concurrent.duration.Duration
+import cats.instances.vector._
 
 object WriterMain extends App {
 
@@ -24,14 +21,44 @@ object WriterMain extends App {
   println(w)
   println(r)
 
-  type Log[A] = Writer[Int, A]
+  println("\n")
 
-  val monadicComp = for {
-    a <- "Step 1".pure[Log]
+  type LogCount[A] = Writer[Int, A]
+
+  val mc1 = for {
+    a <- "Step 1".pure[LogCount]
     _ <- 1.tell
     b <-  ";Step 2".writer(2)
   } yield a + b
 
-  println(monadicComp)
+  println(mc1)
+
+  println("\n")
+
+  type LogString[A] = Writer[Vector[String], A]
+
+  val mc2 = for {
+    a <- 1.pure[LogString]
+    _ <- Vector("\nStep 1 Happening1").tell
+    _ <- Vector("\nStep 1 still happening").tell
+    b <- 2.writer(Vector("\nStep 2 starting"))
+    _ <- Vector("\nStep 2 still happening").tell
+  } yield  {
+    val sum =  a + b
+
+    // Tell Will not work, out of monad context
+    Vector(s"\n$a + $b resulted: $sum").tell
+    Vector(s"\n FINISHED!").tell
+
+    // not happening mappend, for this log.
+    sum.writer(Vector("\nThis time finished\n"))
+  }
+  println(mc2)
+
+
+
+
+
+
 
 }
