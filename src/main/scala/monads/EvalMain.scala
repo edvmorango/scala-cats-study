@@ -114,6 +114,20 @@ object EvalMain extends App {
   println(impureToPure.value)
  // memoize brings purity?
 
+  def foldRightEval[A, B](els: List[A], cur: Eval[B])(f: (A, Eval[B]) => Eval[B]) : Eval[B] = { els match {
+    case h :: t =>
+      Eval.defer(f(h, foldRightEval(t, cur)(f)))
+    case Nil =>
+      cur
+    }
+  }
+
+  def foldRight[A, B](els: List[A], cur: B)(f: (A, B) => B): B =
+    foldRightEval(els, Eval.now(cur)  ) { (a,b) =>
+      b.map(f(a,_))
+    }.value
+
+
 
 
 }
