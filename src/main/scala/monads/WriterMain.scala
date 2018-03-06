@@ -6,7 +6,7 @@ import cats.syntax.writer._
 import cats.instances.int._
 import cats.instances.vector._
 
-import scala.concurrent.duration.Duration
+import scala.concurrent.duration.{Duration, DurationLong}
 import scala.concurrent.{Await, Future}
 import scala.concurrent.ExecutionContext.Implicits.global
 
@@ -130,6 +130,44 @@ object WriterMain extends App {
   println(s"Applicative Future: $finAp")
 
 
+
+
+}
+
+object WriterExercise extends App {
+
+
+  type LogString[A] = Writer[Vector[String], A]
+
+  def slowly[A](body: => A) =
+    try body finally Thread.sleep(100)
+
+  def factorial(n: Int): LogString[Int] = {
+
+
+
+    for {
+      ans <- if (n == 0) {
+        n.pure[LogString]
+      } else {
+      factorial( n - 1).map(_ * n)
+      }
+      _ <- Vector(s"Thread ${Thread.currentThread().getName} N: ${n} ").tell
+    } yield ans
+
+  }
+
+
+  val x = Await.result(Future.sequence(Vector(
+    Future{
+      Thread.sleep(500)
+      factorial(3).run
+    },
+    Future(factorial(5).run)
+  )), 10.seconds)
+
+  println(x)
+  x.map(v => v._1.map(l => println(l)  ) )
 
 
 }
