@@ -6,10 +6,14 @@ import cats.syntax.writer._
 import cats.instances.int._
 import cats.instances.vector._
 
+import scala.concurrent.duration.Duration
+import scala.concurrent.{Await, Future}
+import scala.concurrent.ExecutionContext.Implicits.global
+
 object WriterMain extends App {
 
 
-//  val s1 = "Step 1".pure
+  //  val s1 = "Step 1".pure
 
   val test = Writer(1, "Step 1")
 
@@ -56,6 +60,27 @@ object WriterMain extends App {
   println(mc2)
 
 
+
+  // Monadic future.
+
+  println("\n")
+
+  lazy val f =  Future { 1.pure[LogString] }
+  lazy val f2 = Future { 2.writer(Vector("Step 2 happening")) }
+
+  val mt: Future[LogString[Int]] =  for {
+    aw <- f
+    bw <- f2
+  } yield {
+    for {
+      a <- aw
+      _ <- Vector("Step 1 happening").tell
+      b <- bw
+    } yield a + b
+  }
+  val fin = Await.ready(mt, Duration.Inf).value.get
+
+  println(s"Fin: $fin")
 
 
 
