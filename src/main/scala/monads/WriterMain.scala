@@ -80,8 +80,54 @@ object WriterMain extends App {
   }
   val fin = Await.ready(mt, Duration.Inf).value.get
 
-  println(s"Fin: $fin")
+  println(s"Monadic Future: $fin")
 
+  println("\n")
+
+  // Applicative Future
+
+
+  //for some reason it seems that writer Monad always maintains sequence
+  // I guess that is based on evaluation order.
+
+  val fa = Future {
+    println("Evaluating step 1")
+
+    Thread.sleep(5000)
+    val v = 1.writer(Vector("Step 1 begun"))
+
+    // Won't happen because are out of Writer Functor
+    Vector("Step 1 begun...").tell
+    Vector("Step 1 finished...").tell
+
+    println("Step 1 Happened")
+
+    v
+  }
+
+   val fa2 = Future {
+     println("Evaluating step 2")
+     Thread.sleep(1000)
+
+     val v = 2.writer(Vector("Step 2 begun..."))
+
+     println("Step 2 Happened")
+
+     v
+  }
+
+  val af: Future[LogString[Int]] =for {
+    (aw, bw) <- fa zip fa2
+  } yield  {
+    for {
+      a <- aw
+      b <- bw
+    } yield b + a // Sum order don't matter on vector order, so writer is associative?
+  }
+
+  val finAp = Await.ready(af, Duration.Inf).value.get
+
+  println(s"Applicative Future: $finAp")
 
 
 
