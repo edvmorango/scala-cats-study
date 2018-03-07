@@ -122,7 +122,7 @@ object WriterMain extends App {
     for {
       a <- aw
       b <- bw
-    } yield b + a // Sum order don't matter on vector order, so writer is associative?
+    } yield b + a // Sum order don't matter on vector order, so writer is commutative?
   }
 
   val finAp = Await.ready(af, Duration.Inf).value.get
