@@ -1,7 +1,7 @@
 package monads
 
-import cats.data.Reader
-
+import cats.data.{Reader, ReaderWriterState}
+import cats.syntax.applicative._
 
 object ReaderMain extends App{
 
@@ -29,6 +29,43 @@ object ReaderMain extends App{
   val uRes: String = res // Unwrap from Id monad
   println("\nComposition: ")
   println(uRes)
+
+
+}
+
+object ReaderExercise extends App {
+
+  case class Db(users: Map[Int, String], passwords: Map[String, String])
+
+  val users = Map(
+    1 -> "dade",
+    2 -> "kate",
+    3 -> "margo")
+
+  val passwords = Map(
+    "dade" -> "zerocool",
+    "kate" -> "acidburn",
+    "margo" -> "secret")
+
+
+  val dbInstance = Db(users, passwords)
+
+  type DbReader[A] = Reader[Db, A]
+
+  def findUser(id: Int): DbReader[Option[String]] =
+    Reader( db => db.users.filter(_._1 == id).values.headOption)
+
+  def checkPassword(username: String, password: String): DbReader[Boolean] =
+    Reader( db => db.passwords.exists( u =>  u._1 == username && u._2 == password ))
+
+  def checkLogin(userId: Int , password: String): DbReader[Boolean] = for {
+   usrOpt <- findUser(userId)
+   login <- usrOpt.map(usr => checkPassword(usr ,password)).getOrElse( false.pure[DbReader] )
+  } yield login
+
+
+ println(checkLogin(1, "zerocool").run(dbInstance))
+ println(checkLogin(4, "davinci").run(dbInstance))
 
 
 }
