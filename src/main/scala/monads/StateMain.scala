@@ -4,6 +4,8 @@ import java.time.LocalDateTime
 
 import cats.data.State
 
+import scala.annotation.tailrec
+
 object StateMain extends App{
 
   val someState = State[Int, String] { state =>
@@ -112,6 +114,64 @@ object StateComputation extends App {
 
   println(s"Comp: ${comp.run(100).value}")
   println(s"Comp: ${comp.run(50).value}")
+
+
+}
+
+object StateInterpreter extends App {
+  import State._
+
+  type CalcState[A] = State[List[Int], A]
+
+  def binaryOp(op: Char): (Int, Int) => (Int) = {
+    op match {
+      case '+' =>  (r: Int, l: Int) => (r + l)
+      case '-' =>  (r: Int, l: Int) => (r - l)
+      case '*' =>  (r: Int, l: Int) => (r * l)
+    }
+  }
+
+//  @tailrec
+//  def op(exp: List[Char], stack: List[Int] = Nil): Int = {
+//    exp match {
+//      case Nil => 0
+//
+//      case (h :: Nil) =>
+//        if(h.isDigit)
+//          h.asDigit
+//        else
+//          stack.reduce(binaryOp(h))
+//
+//      case (h :: t) =>
+//        if(h.isDigit)
+//          op(t, stack :+ h.asDigit)
+//        else {
+//          val res = stack.reduce(binaryOp(h)).toString.toList.head
+//          op(t.::(res))
+//        }
+//
+//    }
+//  }
+  //  println(op("12+3*".toList))
+
+
+
+  def eval(func: (Int, Int) => (Int)): CalcState[Int] = State[List[Int], Int] {
+    case (a :: b :: tail) =>
+      val res = func(a,b)
+      (tail.::(res), func(a,b))
+    case _ =>
+      sys.error("Failed")
+  }
+
+
+  val operations: State[List[Int], Int] = for {
+    _ <- eval(binaryOp('+'))
+    b <- eval(binaryOp('-'))
+
+  } yield b
+
+  println(operations.run(List(2,3,4)).value)
 
 
 }
