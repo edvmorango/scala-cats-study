@@ -94,3 +94,24 @@ object StateOperations extends App {
   println(modifyState.run(21).value)
 
 }
+
+object StateComputation extends App {
+  import State._
+
+  // St stands to StateType
+  type St = Int
+
+  val comp: State[St, (String, Float, Int)] = for {
+    half <- inspect[St, (String, Float, Int)](v => ("", v / 2, 0)) // This function can be a side effect?
+    _ <-  set[St](10) // Change the input to 10
+    str <- get[St] // Gets the current state (10)
+    _ <- modify[St](_ * 0)
+    zero <- get[St]
+  } yield (str.toString, half._2, zero)
+
+
+  println(s"Comp: ${comp.run(100).value}")
+  println(s"Comp: ${comp.run(50).value}")
+
+
+}
