@@ -6,7 +6,7 @@ import cats.data.State
 
 import scala.annotation.tailrec
 
-object StateMain extends App{
+object StateMain extends App {
 
   val someState = State[Int, String] { state =>
     // Actions always will be executed, but can be discarded.
@@ -19,7 +19,6 @@ object StateMain extends App{
   println(s"Get state and result: $sf")
   println
 
-
   val s = someState.runS(15).value
   println(s"Ignores result: $s")
   println
@@ -28,30 +27,21 @@ object StateMain extends App{
   println(s"Ignores state: $r")
   println
 
-
   val square = State[Int, String] { s =>
-    (s, s"Result Square: ${s*s}")
+    (s, s"Result Square: ${s * s}")
   }
 
   val sum10 = State[Int, String] { s =>
-    (s, s"Result Sum: ${s+10}")
+    (s, s"Result Sum: ${s + 10}")
   }
 
   val sumSquare = for {
     a <- square
     b <- sum10
-  } yield  (a, b)
-
-
-
-
+  } yield (a, b)
 
   println(sumSquare.run(10).value)
-  println("Hey: ",  sumSquare.run(11).value)
-
-
-
-
+  println("Hey: ", sumSquare.run(11).value)
 
 }
 
@@ -82,7 +72,7 @@ object StateOperations extends App {
   println
 
   // seems to be like State[Int, Double] { v => ... (v,...)}
-  val inspectState = State.inspect[Int, Double]( x => x/2)
+  val inspectState = State.inspect[Int, Double](x => x / 2)
   println("Inspect State:")
   println(inspectState.run(10).value)
   println(inspectState.run(20).value)
@@ -99,79 +89,89 @@ object StateOperations extends App {
 
 object StateComputation extends App {
   import State._
-
   // St stands to StateType
   type St = Int
 
   val comp: State[St, (String, Float, Int)] = for {
     half <- inspect[St, (String, Float, Int)](v => ("", v / 2, 0)) // This function can be a side effect?
-    _ <-  set[St](10) // Change the input to 10
+    _ <- set[St](10) // Change the input to 10
     str <- get[St] // Gets the current state (10)
     _ <- modify[St](_ * 0)
     zero <- get[St]
   } yield (str.toString, half._2, zero)
 
-
   println(s"Comp: ${comp.run(100).value}")
   println(s"Comp: ${comp.run(50).value}")
-
 
 }
 
 object StateInterpreter extends App {
   import State._
+  import cats.syntax.applicative._
 
   type CalcState[A] = State[List[Int], A]
 
-  def binaryOp(op: Char): (Int, Int) => (Int) = {
+  def evalOne(op: String): CalcState[Int] = {
     op match {
-      case '+' =>  (r: Int, l: Int) => (r + l)
-      case '-' =>  (r: Int, l: Int) => (r - l)
-      case '*' =>  (r: Int, l: Int) => (r * l)
+      case "+" => binOp(_ + _)
+      case "-" => binOp(_ - _)
+      case "*" => binOp(_ * _)
+      case "/" => binOp(_ / _)
+      case n   => addOne(n.toInt)
     }
   }
 
-//  @tailrec
-//  def op(exp: List[Char], stack: List[Int] = Nil): Int = {
-//    exp match {
-//      case Nil => 0
-//
-//      case (h :: Nil) =>
-//        if(h.isDigit)
-//          h.asDigit
-//        else
-//          stack.reduce(binaryOp(h))
-//
-//      case (h :: t) =>
-//        if(h.isDigit)
-//          op(t, stack :+ h.asDigit)
-//        else {
-//          val res = stack.reduce(binaryOp(h)).toString.toList.head
-//          op(t.::(res))
-//        }
-//
-//    }
-//  }
-  //  println(op("12+3*".toList))
+  def evalAll(op: List[String]): CalcState[Int] = {
+    op.foldLeft(0.pure[CalcState]) { (a, b) =>
+      a.flatMap(_ => evalOne(b))
+    }
+  }
 
+  def addOne(v: Int): CalcState[Int] = State[List[Int], Int] { cur =>
+    (v :: cur, v)
+  }
 
-
-  def eval(func: (Int, Int) => (Int)): CalcState[Int] = State[List[Int], Int] {
+  def binOp(func: (Int, Int) => (Int)): CalcState[Int] = State[List[Int], Int] {
     case (a :: b :: tail) =>
-      val res = func(a,b)
-      (tail.::(res), func(a,b))
+      val res = func(a, b)
+      (tail.::(res), func(a, b))
     case _ =>
       sys.error("Failed")
   }
 
+  val operations: CalcState[Int] = for {
+    _ <- evalOne("+")
+    _ <- evalOne("-")
+    _ <- evalOne("2")
+    _ <- evalOne("*")
+    r <- evalOne("1")
+  } yield r
 
-  val operations: State[List[Int], Int] = for {
-    _ <- eval(binaryOp('+'))
-    b <- eval(binaryOp('-'))
+  val desugaredOperations: CalcState[Int] =
+    // State is encapsulated
+    // State updates happen into functions returning a State (CalcState[Int])
+    evalOne("+").flatMap { fs =>
+      println(s"First evaluation: $fs")
+      evalOne("-").map { ss =>
+        println(s"Second evaluation: $ss")
+        ss
+      }
+    }
 
-  } yield b
+  val evalAllPart: CalcState[Int] = for {
+    _ <- evalOne("1")
+    _ <- evalOne("2")
+    _ <- evalOne("+")
+    _ <- evalOne("3")
+    _ <- evalOne("4")
+    _ <- evalOne("+")
+    r <- evalOne("*")
+  } yield r
 
-  println(operations.run(List(2,3,4)).value)
-
-
+  println(operations.run(List(2, 3, 4)).value)
+  println
+  println(desugaredOperations.run(List(2, 3, 4)).value)
+  println
+  println(evalAll(List("1", "2", "+", "3", "4", "+", "*")).run(Nil).value)
+  println(evalAllPart.run(Nil).value)
 }
