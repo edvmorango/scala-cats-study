@@ -1,5 +1,4 @@
 package applicative
-
 import cats.{Semigroupal => CSemigroupal}
 import cats.instances.option._
 
@@ -33,7 +32,13 @@ object SemigroupalMain extends App {
 }
 
 object ApplicativeMain extends App {
+  import cats.Monoid
   import cats.syntax.apply._
+  import cats.instances.int._
+  import cats.instances.list._
+  import cats.instances.string._
+  import cats.syntax.semigroup._
+  import cats.instances.invariant._
 
   case class Variadic(a: Int, b: String, c: Double, d: Char)
 
@@ -49,4 +54,23 @@ object ApplicativeMain extends App {
   val functionApply = (Option(2), Option(2)).mapN((a, b) => a * b)
 
   println(s"Function Apply: $functionApply")
+
+  //Monoid
+  case class Monoidic(name: String, priority: Int, dependencies: List[Int])
+
+  val tupleToMonoidic: (String, Int, List[Int]) => (Monoidic) =
+    Monoidic.apply _
+
+  val monoidicToTuple: Monoidic => (String, Int, List[Int]) = m =>
+    (m.name, m.priority, m.dependencies)
+
+  implicit val monoidicMonoid: Monoid[Monoidic] =
+    (Monoid[String], Monoid[Int], Monoid[List[Int]])
+      .imapN(tupleToMonoidic)(monoidicToTuple)
+
+  val empty = Monoidic("", 0, Nil)
+  val monoid1 = Monoidic("A", 1, List(1, 2, 3))
+  val monoid2 = Monoidic("B", 1, List(4, 5, 6))
+
+  println(s"Monoidic: ${empty |+| monoid1 |+| monoid2}")
 }
