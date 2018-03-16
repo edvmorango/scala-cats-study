@@ -1,10 +1,10 @@
 package applicative
-import cats.{Semigroupal => CSemigroupal}
+import cats.data.Validated.Invalid
+import cats.{Monad, Semigroupal => CSemigroupal}
 import cats.instances.option._
 
 import scala.concurrent.Await
-import scala.io.Codec.string2codec
-
+import scala.util.Try
 object SemigroupalOptionInstance {
   implicit val semigroupalInstance = new Semigroupal[Option] {
 
@@ -79,6 +79,8 @@ object ApplicativeMain extends App {
 }
 
 object SemigroupalDifferentTypes extends App {
+  // Semigroupal is monadic.
+
   import cats.instances.invariant._
   import cats.Monoid
   import cats.instances.future._
@@ -88,6 +90,9 @@ object SemigroupalDifferentTypes extends App {
   import scala.concurrent.duration._
   import scala.concurrent.ExecutionContext.Implicits.global
   import cats.syntax.apply._
+  import cats.Monad
+  import cats.syntax.flatMap._
+  import cats.syntax.functor._
 
   val f1 = Future {
     println("F1 started")
@@ -127,4 +132,55 @@ object SemigroupalDifferentTypes extends App {
   println(els)
   println(ers)
   println(erl)
+
+  def product[M[_]: Monad, A, B](x: M[A], y: M[B]): M[(A, B)] =
+    for {
+      a <- x
+      b <- y
+    } yield (a, b)
+
+}
+
+object ValidatedMain extends App {
+
+  import cats.Semigroupal
+  import cats.data.Validated
+  import cats.instances.list._
+  import cats.instances.int._
+  import cats.syntax.validated._
+  import cats.syntax.apply._
+  import cats.syntax.semigroup._
+  import cats.syntax.applicative._
+  import cats.syntax.applicativeError._
+
+  type EitherAcc[A] = Validated[List[String], A]
+
+  val validated =
+    CSemigroupal[EitherAcc]
+      .product(Invalid(List("First fail")), Invalid(List("Second fail")))
+
+  println(validated)
+
+  val monoid = 123.valid[List[String]] |+| List("Second")
+    .invalid[Int] |+| List("Third").invalid[Int]
+
+  println(s"Monoid $monoid")
+
+  val pre = 123.pure[EitherAcc]
+  val raised = List("Raised error").raiseError[EitherAcc, Int]
+
+  println(pre)
+  println(raised)
+
+  println
+  // Helpers
+
+  val fromExc = Validated.catchOnly[NumberFormatException]("string".toInt)
+  val fromTry = Validated.fromTry(Try { 10 / 0 })
+  val fromEitherValid = Validated.fromEither(Right("Some valid string"))
+
+  println(s"Exc: ${fromExc}")
+  println(s"Try: ${fromTry}")
+  println(s"Valid Either: ${fromEitherValid}")
+
 }
