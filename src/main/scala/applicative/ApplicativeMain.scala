@@ -2,6 +2,9 @@ package applicative
 import cats.{Semigroupal => CSemigroupal}
 import cats.instances.option._
 
+import scala.concurrent.Await
+import scala.io.Codec.string2codec
+
 object SemigroupalOptionInstance {
   implicit val semigroupalInstance = new Semigroupal[Option] {
 
@@ -73,4 +76,55 @@ object ApplicativeMain extends App {
   val monoid2 = Monoidic("B", 1, List(4, 5, 6))
 
   println(s"Monoidic: ${empty |+| monoid1 |+| monoid2}")
+}
+
+object SemigroupalDifferentTypes extends App {
+  import cats.instances.invariant._
+  import cats.Monoid
+  import cats.instances.future._
+  import cats.instances.list._
+  import cats.instances.either._
+  import scala.concurrent.Future
+  import scala.concurrent.duration._
+  import scala.concurrent.ExecutionContext.Implicits.global
+  import cats.syntax.apply._
+
+  val f1 = Future {
+    println("F1 started")
+    Thread.sleep(1000)
+    println("F1 finishing")
+    "F1 finished"
+  }
+
+  val f2 = Future {
+    println("F2 started")
+    Thread.sleep(2000)
+    println("F2 finishing")
+    2000
+  }
+
+  val fs = CSemigroupal[Future].product(f1, f2)
+
+  val fr = Await.ready(fs, Duration.Inf).value
+
+  println(fr)
+
+  //List
+
+  val ls = CSemigroupal[List].product(List(1, 2, 3), List("a", "b", "c"))
+
+  println(ls)
+
+  //Either
+
+  type EitherA[A] = Either[List[String], A]
+
+  val els = CSemigroupal[EitherA]
+    .product(Left(List("First fail")), Left(List("Second fail")))
+  val ers = CSemigroupal[EitherA].product(Right(10), Right(20))
+  val erl = CSemigroupal[EitherA].product(Right(10), Left(List("Second fail")))
+
+  println(els)
+  println(ers)
+  println(erl)
 }
