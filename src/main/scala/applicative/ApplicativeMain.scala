@@ -1,10 +1,9 @@
 package applicative
-import cats.data.Validated.Invalid
 import cats.{Monad, Semigroupal => CSemigroupal}
 import cats.instances.option._
 
 import scala.concurrent.Await
-import scala.util.Try
+import scala.util.{Failure, Success, Try}
 object SemigroupalOptionInstance {
   implicit val semigroupalInstance = new Semigroupal[Option] {
 
@@ -152,6 +151,7 @@ object ValidatedMain extends App {
   import cats.syntax.semigroup._
   import cats.syntax.applicative._
   import cats.syntax.applicativeError._
+  import cats.data.Validated.Invalid
 
   type EitherAcc[A] = Validated[List[String], A]
 
@@ -183,4 +183,55 @@ object ValidatedMain extends App {
   println(s"Try: ${fromTry}")
   println(s"Valid Either: ${fromEitherValid}")
 
+}
+
+object ExerciseMain extends App {
+
+  import cats.Semigroupal
+  import cats.data.Validated
+  import cats.instances.list._
+  import cats.data.Validated.{Invalid, Valid}
+  import cats.syntax.semigroup._
+
+  import cats.syntax.apply._
+
+  case class User(name: String, age: Int)
+
+  type UserValidation[A] = Validated[List[String], A]
+
+  val validDb: Map[String, String] = Map("name" -> "Eduardo", "age" -> "22")
+  val invalidDb: Map[String, String] = Map("nam" -> "Eduardo", "age" -> "-1")
+
+  def readName(db: Map[String, String]): UserValidation[String] = {
+    db.get("name") match {
+      case None => Invalid(List("Empty name"))
+      case Some(name) =>
+        if (name.isEmpty) Invalid(List("Blank Name")) else Valid[String](name)
+    }
+  }
+
+  def readAge(db: Map[String, String]): UserValidation[Int] = {
+    db.get("age") match {
+      case None => Invalid(List("Empty age"))
+      case Some(age) =>
+        Try(age.toInt) match {
+          case Success(age) =>
+            if (age > 0) Valid[Int](age) else Invalid(List("Invalid age"))
+          case _ => Invalid(List("Invalid age format"))
+        }
+    }
+  }
+
+  def readUser(db: Map[String, String]): UserValidation[User] = {
+    (readName(db), readAge(db)).mapN(User.apply)
+
+  }
+
+  println(readName(validDb))
+  println(readName(invalidDb))
+
+  println(readAge(validDb))
+  println(readAge(invalidDb))
+
+  println(readUser(validDb))
 }
