@@ -192,6 +192,7 @@ object ExerciseMain extends App {
   import cats.instances.list._
   import cats.data.Validated.{Invalid, Valid}
   import cats.syntax.semigroup._
+  import cats.syntax.either._
 
   import cats.syntax.apply._
 
@@ -202,7 +203,7 @@ object ExerciseMain extends App {
   val validDb: Map[String, String] = Map("name" -> "Eduardo", "age" -> "22")
   val invalidDb: Map[String, String] = Map("nam" -> "Eduardo", "age" -> "-1")
 
-  def readName(db: Map[String, String]): UserValidation[String] = {
+  def readNameDirty(db: Map[String, String]): UserValidation[String] = {
     db.get("name") match {
       case None => Invalid(List("Empty name"))
       case Some(name) =>
@@ -210,7 +211,7 @@ object ExerciseMain extends App {
     }
   }
 
-  def readAge(db: Map[String, String]): UserValidation[Int] = {
+  def readAgeDirty(db: Map[String, String]): UserValidation[Int] = {
     db.get("age") match {
       case None => Invalid(List("Empty age"))
       case Some(age) =>
@@ -222,16 +223,47 @@ object ExerciseMain extends App {
     }
   }
 
-  def readUser(db: Map[String, String]): UserValidation[User] = {
-    (readName(db), readAge(db)).mapN(User.apply)
-
+  def readUserDirty(db: Map[String, String]): UserValidation[User] = {
+    (readNameDirty(db), readAgeDirty(db)).mapN(User.apply)
   }
 
-  println(readName(validDb))
-  println(readName(invalidDb))
+  // Clean
 
-  println(readAge(validDb))
-  println(readAge(invalidDb))
+  def readField(name: String)(db: Map[String, String]): UserValidation[String] =
+    Validated.fromEither(db.get(name).toRight(List(s"empty $name")))
 
+  def parseInt(v: String): UserValidation[Int] =
+    Validated.fromEither(
+      Either
+        .catchOnly[NumberFormatException](v.toInt)
+        .leftMap(_ => List("Invalid age format")))
+
+  def validAge(v: Int) =
+    Right(v).ensure(List("Invalid age"))(_ >= 0)
+
+  def validName(v: String) =
+    Right(v).ensure(List("Empty name"))(_.isEmpty)
+
+//  def readUser(db: Map[String, String]) = {
+//    val userPipe = for {
+//      n <- readField("name")
+//      v <- validName(n)
+//    } v
+//
+//    val agePipe = for {
+//      a <- readField("age")
+//      p <- parseInt(a)
+//      v <- validAge(p)
+//    } yield v
+//
+//    (userPipe, agePipe).mapN(User.apply)
+//
+//  }
+
+  println(readNameDirty(validDb))
+  println(readNameDirty(invalidDb))
+  println(readAgeDirty(validDb))
+  println(readAgeDirty(invalidDb))
   println(readUser(validDb))
+
 }
