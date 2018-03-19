@@ -1,5 +1,8 @@
 package foldtrav
 
+import scala.concurrent.duration.DurationLong
+import scala.concurrent.{Await, Future}
+
 object FoldMain extends App {
   import scala.math.Numeric
 
@@ -81,5 +84,31 @@ object TraverseMain extends App {
 
   println(s"ProcessV: ${processV(List(2, 3, 5))}")
   println(s"ProcessV: ${processV(List(2, 6, 4))}")
+
+}
+
+object TraverseInstancesMain extends App {
+  import cats.Traverse
+  import cats.instances.future._
+  import cats.instances.list._
+  import scala.concurrent.ExecutionContext.Implicits.global
+
+  def getTime(name: String) = Future(name.length * 60)
+
+  val hosts = List("github.com", "bitbucket.com", "gitlab.com")
+
+  val totalTime: Future[List[Int]] = Traverse[List].traverse(hosts)(getTime)
+
+  //Sequence
+
+  val futureHosts = hosts.map(x => Future(x))
+
+  val totalTimeSeq = Traverse[List].sequence(futureHosts)
+
+  val r1 = Await.result(totalTime, 1.seconds)
+  val r2 = Await.result(totalTimeSeq, 1.seconds)
+
+  println(r1)
+  println(r2)
 
 }
