@@ -193,15 +193,21 @@ object ExerciseMain extends App {
   import cats.data.Validated.{Invalid, Valid}
   import cats.syntax.semigroup._
   import cats.syntax.either._
-
   import cats.syntax.apply._
+  import cats.syntax.validated._
+
+  import cats.Monad
+  import cats.syntax.flatMap._
+  import cats.syntax.functor._
 
   case class User(name: String, age: Int)
 
+  // Validated isn't monadic
   type UserValidation[A] = Validated[List[String], A]
 
   val validDb: Map[String, String] = Map("name" -> "Eduardo", "age" -> "22")
   val invalidDb: Map[String, String] = Map("nam" -> "Eduardo", "age" -> "-1")
+  val invalidDb2: Map[String, String] = Map("name" -> "", "age" -> "22")
 
   def readNameDirty(db: Map[String, String]): UserValidation[String] = {
     db.get("name") match {
@@ -229,41 +235,50 @@ object ExerciseMain extends App {
 
   // Clean
 
-  def readField(name: String)(db: Map[String, String]): UserValidation[String] =
-    Validated.fromEither(db.get(name).toRight(List(s"empty $name")))
+  def readField(name: String)(db: Map[String, String]) =
+    Validated.fromOption(db.get(name), List(s"empty $name"))
 
   def parseInt(v: String): UserValidation[Int] =
-    Validated.fromEither(
-      Either
-        .catchOnly[NumberFormatException](v.toInt)
-        .leftMap(_ => List("Invalid age format")))
+    Validated
+      .catchOnly[NumberFormatException](v.toInt)
+      .leftMap(_ => List("Invalid age format"))
 
   def validAge(v: Int) =
-    Right(v).ensure(List("Invalid age"))(_ >= 0)
+    v.asRight[List[String]].ensure(List("Invalid age"))(_ >= 0).toValidated
 
   def validName(v: String) =
-    Right(v).ensure(List("Empty name"))(_.isEmpty)
+    v.asRight[List[String]].ensure(List("Empty Name"))(!_.isEmpty).toValidated
 
-//  def readUser(db: Map[String, String]) = {
-//    val userPipe = for {
-//      n <- readField("name")
-//      v <- validName(n)
-//    } v
-//
-//    val agePipe = for {
-//      a <- readField("age")
-//      p <- parseInt(a)
-//      v <- validAge(p)
-//    } yield v
-//
-//    (userPipe, agePipe).mapN(User.apply)
-//
-//  }
+  def readUser(db: Map[String, String]) = {
+
+    val userPipe = readField("name")(db).andThen(validName)
+    //    val userPipe: UserValidation[String] = for {
+    //      n <- readField("name")(db)
+    //      v <- validName(n)
+    //    } yield v
+
+    val agePipe = readField("age")(db).andThen(parseInt).andThen(validAge)
+
+    //    val agePipe: UserValidation[Int] = for {
+    //      a <- readField("age")(db)
+    //      p <- parseInt(a)
+    //      v <- validAge(p)
+    //    } yield v
+
+    (userPipe, agePipe).mapN(User.apply)
+
+  }
+
 
   println(readNameDirty(validDb))
   println(readNameDirty(invalidDb))
   println(readAgeDirty(validDb))
   println(readAgeDirty(invalidDb))
+
+  println("\nClean not monadic(not in terms of flatMap):")
   println(readUser(validDb))
+  println(readUser(invalidDb))
+  println(readUser(invalidDb2))
+
 
 }
